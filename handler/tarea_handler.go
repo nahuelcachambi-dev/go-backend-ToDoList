@@ -21,14 +21,24 @@ func (h *TareaHandler) CrearTarea(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var nuevaTarea domain.Tarea
-	if err := json.NewDecoder(r.Body).Decode(&nuevaTarea); err != nil {
+	var req struct {
+		ID          string `json:"id"`
+		Titulo      string `json:"titulo"`
+		Descripcion string `json:"descripcion"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "JSON invalido", http.StatusBadRequest)
 		return
 	}
 
-	err := h.repo.Crear(&nuevaTarea)
+	tarea, err := domain.NuevaTarea(req.ID, req.Titulo, req.Descripcion)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repo.Crear(tarea); err != nil {
 		if err == domain.ErrTareaYaExiste {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
@@ -38,7 +48,7 @@ func (h *TareaHandler) CrearTarea(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Conten-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(nuevaTarea)
+	json.NewEncoder(w).Encode(tarea)
 }
 
 func (h *TareaHandler) ObtenerTarea(w http.ResponseWriter, r *http.Request) {
